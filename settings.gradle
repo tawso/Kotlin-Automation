@@ -1,0 +1,10 @@
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+rootProject.name = 'KA'
+
+include 'ka-core'
+include 'ka-tasks'
+include 'ka-http'
+include 'ka-cli'
+include 'ka-example'

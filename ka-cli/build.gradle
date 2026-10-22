@@ -1,0 +1,27 @@
+plugins {
+    id 'application'
+}
+
+application {
+    mainClass = 'tawsor.ka.cli.MainKt'
+}
+
+dependencies {
+    implementation project(':ka-core')
+    implementation project(':ka-tasks')
+    implementation project(':ka-http')
+}
+
+tasks.register('fatJar', Jar) {
+    archiveBaseName = 'ka-cli'
+    archiveClassifier = 'all'
+    manifest {
+        attributes 'Main-Class': 'tawsor.ka.cli.MainKt'
+    }
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    with jar
+}
+

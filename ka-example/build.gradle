@@ -1,0 +1,14 @@
+plugins {
+    id 'application'
+}
+
+application {
+    mainClass = 'tawsor.ka.example.ExamplePipelineKt'
+}
+
+dependencies {
+    implementation project(':ka-core')
+    implementation project(':ka-tasks')
+    implementation project(':ka-http')
+}
+
