@@ -1,6 +1,7 @@
 package tawsor.ka.core
 
 import kotlinx.coroutines.test.runTest
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -63,5 +64,29 @@ class PipelineTest {
         assertTrue(ctx.get<Boolean>("p1_done") == true)
         assertTrue(ctx.get<Boolean>("p2_done") == true)
     }
-}
 
+    @Test
+    fun testLifecycleHooks() = runTest {
+        val successCalled = AtomicBoolean(false)
+        val failureCalled = AtomicBoolean(false)
+
+        val successPipe = pipeline("success-pipe") {
+            step("ok") {}
+            onSuccess { successCalled.set(true) }
+            onFailure { _, _ -> failureCalled.set(true) }
+        }
+        successPipe.execute()
+        assertTrue(successCalled.get())
+        assertTrue(!failureCalled.get())
+
+        successCalled.set(false)
+        val failPipe = pipeline("fail-pipe") {
+            step("failing") { throw RuntimeException("Boom") }
+            onSuccess { successCalled.set(true) }
+            onFailure { _, _ -> failureCalled.set(true) }
+        }
+        failPipe.execute()
+        assertTrue(!successCalled.get())
+        assertTrue(failureCalled.get())
+    }
+}

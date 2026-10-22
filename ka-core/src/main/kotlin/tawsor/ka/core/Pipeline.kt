@@ -27,10 +27,12 @@ sealed class PipelineResult {
 
 class Pipeline(
     val name: String,
-    private val executions: List<StepExecution>
+    private val executions: List<StepExecution>,
+    private val successHook: (suspend (PipelineContext) -> Unit)? = null,
+    private val failureHook: (suspend (PipelineContext, Throwable) -> Unit)? = null
 ) {
     suspend fun execute(context: PipelineContext = PipelineContext()): PipelineResult {
-        context.log("Starting pipeline: '$name'")
+        context.logInfo("Starting pipeline: '$name'")
         var failedStepName: String? = null
         var stepFailure: Throwable? = null
 
@@ -53,10 +55,20 @@ class Pipeline(
         }
 
         return if (stepFailure != null) {
-            context.log("Pipeline '$name' FAILED at step '$failedStepName' in $duration. Error: ${stepFailure.message}")
+            context.logError("Pipeline '$name' FAILED at step '$failedStepName' in $duration. Error: ${stepFailure.message}")
+            try {
+                failureHook?.invoke(context, stepFailure)
+            } catch (hookEx: Throwable) {
+                context.logError("Error executing onFailure hook: ${hookEx.message}")
+            }
             PipelineResult.Failure(name, failedStepName ?: "unknown", stepFailure, duration)
         } else {
-            context.log("Pipeline '$name' COMPLETED successfully in $duration")
+            context.logSuccess("Pipeline '$name' COMPLETED successfully in $duration")
+            try {
+                successHook?.invoke(context)
+            } catch (hookEx: Throwable) {
+                context.logError("Error executing onSuccess hook: ${hookEx.message}")
+            }
             PipelineResult.Success(name, duration)
         }
     }
@@ -78,7 +90,7 @@ class Pipeline(
                 lastError = e
                 attemptsLeft--
                 if (attemptsLeft > 0) {
-                    context.log("Step [${step.name}] failed: ${e.message}. Retrying in ${step.retryDelay}...")
+                    context.logWarn("Step [${step.name}] failed: ${e.message}. Retrying in ${step.retryDelay}...")
                     delay(step.retryDelay)
                     attempt++
                 }
@@ -97,4 +109,3 @@ class Pipeline(
         }.awaitAll()
     }
 }
-

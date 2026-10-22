@@ -25,6 +25,8 @@ class ParallelBlockBuilder(val name: String) {
 @KaDsl
 class PipelineBuilder(val name: String) {
     private val executions = mutableListOf<StepExecution>()
+    private var successHook: (suspend (PipelineContext) -> Unit)? = null
+    private var failureHook: (suspend (PipelineContext, Throwable) -> Unit)? = null
 
     fun step(
         name: String,
@@ -41,7 +43,15 @@ class PipelineBuilder(val name: String) {
         executions.add(StepExecution.Parallel(name, builder.build()))
     }
 
-    fun build(): Pipeline = Pipeline(name, executions)
+    fun onSuccess(action: suspend (PipelineContext) -> Unit) {
+        this.successHook = action
+    }
+
+    fun onFailure(action: suspend (PipelineContext, Throwable) -> Unit) {
+        this.failureHook = action
+    }
+
+    fun build(): Pipeline = Pipeline(name, executions, successHook, failureHook)
 }
 
 fun pipeline(name: String, block: PipelineBuilder.() -> Unit): Pipeline {
@@ -49,4 +59,3 @@ fun pipeline(name: String, block: PipelineBuilder.() -> Unit): Pipeline {
     builder.block()
     return builder.build()
 }
-
